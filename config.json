@@ -1,0 +1,233 @@
+{
+"categories": [
+{
+"id": "admin",
+"name": "Infrastructure",
+"icon": "shield-check"
+},
+{
+"id": "apps",
+"name": "Applications",
+"icon": "folder-open"
+},
+{
+"id": "media",
+"name": "Médias",
+"icon": "film"
+},
+{
+"id": "downloads",
+"name": "Téléchargements",
+"icon": "download"
+},
+{
+"id": "monitoring",
+"name": "Monitoring",
+"icon": "activity"
+}
+],
+"services": [
+{
+"id": "roundcube_app",
+"name": "Roundcube",
+"cat": "admin",
+"icon": "mail",
+"desc": "Webmail Client",
+"color": "bg-blue-500",
+"url": "https://roundcube.du-cray.eu/"
+},
+{
+"id": "actual_budget",
+"name": "Actual Budget",
+"cat": "apps",
+"icon": "dollar-sign",
+"desc": "Gestion Financière",
+"color": "bg-emerald-500",
+"url": "https://budget.du-cray.eu/"
+},
+{
+"id": "vaultwarden",
+"name": "Vaultwarden",
+"cat": "apps",
+"icon": "lock",
+"desc": "Gestionnaire de Mots de Passe",
+"color": "bg-indigo-600",
+"url": "https://vault.du-cray.eu/"
+},
+{
+"id": "nextcloud_app",
+"name": "Nextcloud",
+"cat": "apps",
+"icon": "cloud",
+"desc": "Cloud & Collaboration",
+"color": "bg-blue-600",
+"url": "https://nextcloud.du-cray.eu/"
+},
+{
+"id": "portainer",
+"name": "Portainer",
+"cat": "admin",
+"icon": "container",
+"desc": "Gestion Docker UI",
+"color": "bg-sky-600"
+},
+{
+"id": "proxy",
+"name": "NPM",
+"cat": "admin",
+"icon": "shield",
+"desc": "Nginx Proxy Manager",
+"color": "bg-zinc-700",
+"url": "https://proxy.du-cray.com/",
+"logsUrl": "https://proxy.du-cray.com/audit-log"
+},
+{
+"id": "plex",
+"name": "Plex",
+"cat": "media",
+"icon": "play-circle",
+"desc": "Serveur Multimédia",
+"color": "bg-yellow-600"
+},
+{
+"id": "overseerr",
+"name": "Overseerr",
+"cat": "media",
+"icon": "search",
+"desc": "Requêtes Médias",
+"color": "bg-pink-600"
+},
+{
+"id": "tautulli",
+"name": "Tautulli",
+"cat": "media",
+"icon": "bar-chart-3",
+"desc": "Statistiques Plex",
+"color": "bg-orange-500"
+},
+{
+"id": "tdarr",
+"name": "Tdarr",
+"cat": "media",
+"icon": "refresh-cw",
+"desc": "Transcodage Automatisé",
+"color": "bg-green-600"
+},
+{
+"id": "qbittorrent",
+"name": "qBittorrent",
+"cat": "downloads",
+"icon": "download",
+"desc": "Client Torrent VPN",
+"color": "bg-blue-700"
+},
+{
+"id": "radarr",
+"name": "Radarr",
+"cat": "media",
+"icon": "film",
+"desc": "Gestion Films",
+"color": "bg-cyan-500"
+},
+{
+"id": "sonarr",
+"name": "Sonarr",
+"cat": "media",
+"icon": "tv",
+"desc": "Gestion Séries",
+"color": "bg-sky-500"
+},
+{
+"id": "bazarr",
+"name": "Bazarr",
+"cat": "media",
+"icon": "languages",
+"desc": "Sous-titres",
+"color": "bg-purple-500"
+},
+{
+"id": "prowlarr",
+"name": "Prowlarr",
+"cat": "downloads",
+"icon": "list",
+"desc": "Gestion Indexeurs",
+"color": "bg-red-500"
+},
+{
+"id": "grafana",
+"name": "Grafana",
+"cat": "monitoring",
+"icon": "layout-dashboard",
+"desc": "Tableaux de Bord",
+"color": "bg-orange-600"
+},
+{
+"id": "prometheus",
+"name": "Prometheus",
+"cat": "monitoring",
+"icon": "database",
+"desc": "Série Temporelle",
+"color": "bg-red-600"
+},
+{
+"id": "cadvisor",
+"name": "cAdvisor",
+"cat": "monitoring",
+"icon": "microchip",
+"desc": "Métriques Conteneurs",
+"color": "bg-blue-400"
+},
+{
+"id": "uptime_kuma",
+"name": "Uptime Kuma",
+"cat": "monitoring",
+"icon": "clock",
+"desc": "Monitoring Status",
+"color": "bg-emerald-600",
+"url": "https://uptime.du-cray.eu/"
+},
+{
+"id": "portfolio-production",
+"name": "Portfolio",
+"cat": "apps",
+"icon": "briefcase",
+"desc": "Portfolio Personnel",
+"color": "bg-purple-600",
+"url": "https://louis-marie.du-cray.eu/"
+},
+{
+"id": "it-tools",
+"name": "IT-Tools",
+"cat": "apps",
+"icon": "wrench",
+"desc": "Outils IT & Développement",
+"color": "bg-teal-600"
+},
+{
+"id": "serveur",
+"name": "IRMC S5",
+"cat": "admin",
+"icon": "server",
+"desc": "IRMC serveur",
+"color": "bg-purple-600",
+"logsUrl": "https://serveur.du-cray.eu/logs"
+},
+{
+"id": "dozzle",
+"name": "Dozzle",
+"cat": "monitoring",
+"icon": "file-text",
+"desc": "Logs Conteneurs",
+"color": "bg-slate-600",
+"url": "https://dozzle.du-cray.eu/"
+},
+{
+"id": "kopia",
+"name": "Kopia UI",
+"cat": "admin",
+"icon": "archive",
+"desc": "Gestion Sauvegardes",
+"color": "bg-lime-600"
+}
+]
+}
