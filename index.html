@@ -10,480 +10,312 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; scroll-behavior: smooth; background-color: #020617; }
-        .glass { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Fira+Code:wght@400;500&display=swap');
+        body { font-family: 'Inter', sans-serif; scroll-behavior: smooth; background-color: #020617; color: #f8fafc; }
+        .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(16px); border-left: 1px solid rgba(51, 65, 85, 0.4); }
         .modal-overlay { background: rgba(2, 6, 23, 0.9); backdrop-filter: blur(8px); }
-        .dragging { opacity: 0.4; transform: scale(0.98); }
-        .drag-over { border-color: #3b82f6 !important; background: rgba(59, 130, 246, 0.1) !important; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         iframe { background: black; }
         pre { font-family: 'Fira Code', monospace; }
-        .status-dot { width: 6px; height: 6px; border-radius: 50%; }
-        .status-online { background: #10b981; box-shadow: 0 0 8px #10b981; }
-        .status-offline { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .status-online { background: #10b981; box-shadow: 0 0 10px #10b981; }
+        .status-offline { background: #ef4444; box-shadow: 0 0 10px #ef4444; }
         .status-checking { background: #f59e0b; animation: pulse 1s infinite; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+        .log-panel { transform: translateX(100%); transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        .log-panel.open { transform: translateX(0); }
+        .metric-bar { height: 4px; border-radius: 2px; background: rgba(51, 65, 85, 0.5); overflow: hidden; }
+        .metric-progress { height: 100%; transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+        .tab-active { background: #1e293b; color: #3b82f6; border-bottom: 2px solid #3b82f6; }
     </style>
 </head>
-<body class="text-slate-100 selection:bg-blue-500/30">
+<body class="selection:bg-blue-500/30 overflow-x-hidden text-slate-100">
     <div id="root"></div>
-
-    <!-- BLOC DE DONNÉES PERSISTANTES -->
-    <script id="dashboard-data" type="application/json">
-        {
-    "categories": [
-        {
-            "id": "admin",
-            "name": "Infrastructure",
-            "icon": "shield-check"
-        },
-        {
-            "id": "media",
-            "name": "Médias",
-            "icon": "film"
-        },
-        {
-            "id": "downloads",
-            "name": "Téléchargements",
-            "icon": "download"
-        },
-        {
-            "id": "monitoring",
-            "name": "Monitoring",
-            "icon": "activity"
-        },
-        {
-            "id": "stockage",
-            "name": "stockage",
-            "icon": "folder"
-        }
-    ],
-    "services": [
-        {
-            "id": "roundcube",
-            "name": "Roundcube",
-            "cat": "admin",
-            "icon": "mail",
-            "desc": "Webmail",
-            "color": "bg-blue-500"
-        },
-        {
-            "id": "budget",
-            "name": "Actual Budget",
-            "cat": "stockage",
-            "icon": "settings",
-            "desc": "Finance",
-            "color": "bg-emerald-500"
-        },
-        {
-            "id": "vault",
-            "name": "Vaultwarden",
-            "cat": "stockage",
-            "icon": "lock",
-            "desc": "Passwords",
-            "color": "bg-indigo-600"
-        },
-        {
-            "id": "nextcloud",
-            "name": "Nextcloud",
-            "cat": "stockage",
-            "icon": "cloud",
-            "desc": "Cloud Storage",
-            "color": "bg-blue-600"
-        },
-        {
-            "id": "portainer",
-            "name": "Portainer",
-            "cat": "admin",
-            "icon": "container",
-            "desc": "Docker",
-            "color": "bg-sky-600"
-        },
-        {
-            "id": "proxy",
-            "name": "NPM",
-            "cat": "admin",
-            "icon": "shield",
-            "desc": "Proxy",
-            "color": "bg-zinc-700",
-            "url": "https://proxy.du-cray.com/"
-        },
-        {
-            "id": "louis-marie",
-            "name": "Portfolio",
-            "cat": "admin",
-            "icon": "user",
-            "desc": "Site Perso",
-            "color": "bg-indigo-500"
-        },
-        {
-            "id": "plex",
-            "name": "Plex",
-            "cat": "media",
-            "icon": "film",
-            "desc": "Streaming",
-            "color": "bg-yellow-600"
-        },
-        {
-            "id": "ombi",
-            "name": "Overseerr",
-            "cat": "media",
-            "icon": "search",
-            "desc": "Requests",
-            "color": "bg-pink-600"
-        },
-        {
-            "id": "tautulli",
-            "name": "Tautulli",
-            "cat": "media",
-            "icon": "activity",
-            "desc": "Stats",
-            "color": "bg-orange-500"
-        },
-        {
-            "id": "tdarr",
-            "name": "Tdarr",
-            "cat": "media",
-            "icon": "refresh-cw",
-            "desc": "Transcode",
-            "color": "bg-green-600"
-        },
-        {
-            "id": "wiklm",
-            "name": "WikiLM",
-            "cat": "stockage",
-            "icon": "book-open",
-            "desc": "Wiki",
-            "color": "bg-slate-600"
-        },
-        {
-            "id": "torrent",
-            "name": "qBittorrent",
-            "cat": "downloads",
-            "icon": "download",
-            "desc": "Torrents",
-            "color": "bg-blue-700"
-        },
-        {
-            "id": "radarr",
-            "name": "Radarr",
-            "cat": "media",
-            "icon": "film",
-            "desc": "Movies",
-            "color": "bg-cyan-500"
-        },
-        {
-            "id": "sonarr",
-            "name": "Sonarr",
-            "cat": "media",
-            "icon": "film",
-            "desc": "TV",
-            "color": "bg-sky-500"
-        },
-        {
-            "id": "bazarr",
-            "name": "Bazarr",
-            "cat": "media",
-            "icon": "search",
-            "desc": "Subs",
-            "color": "bg-purple-500"
-        },
-        {
-            "id": "prowlarr",
-            "name": "Prowlarr",
-            "cat": "downloads",
-            "icon": "server",
-            "desc": "Indexers",
-            "color": "bg-red-500"
-        },
-        {
-            "id": "grafana",
-            "name": "Grafana",
-            "cat": "monitoring",
-            "icon": "activity",
-            "desc": "Metrics",
-            "color": "bg-orange-600"
-        },
-        {
-            "id": "prometheus",
-            "name": "Prometheus",
-            "cat": "monitoring",
-            "icon": "activity",
-            "desc": "Data",
-            "color": "bg-red-600"
-        },
-        {
-            "id": "cadvisor",
-            "name": "cAdvisor",
-            "cat": "monitoring",
-            "icon": "hard-drive",
-            "desc": "Containers",
-            "color": "bg-blue-400"
-        },
-        {
-            "id": "serveur",
-            "name": "IRMC",
-            "cat": "admin",
-            "icon": "package",
-            "desc": "",
-            "color": "bg-slate-500",
-            "url": ""
-        },
-        {
-            "id": "uptime",
-            "name": "Uptime Kuma",
-            "cat": "monitoring",
-            "icon": "activity",
-            "desc": "Status Monitor",
-            "color": "bg-emerald-600"
-        },
-        {
-            "id": "scrutiny",
-            "name": "scrutiny",
-            "cat": "monitoring",
-            "icon": "package",
-            "desc": "",
-            "color": "bg-slate-500",
-            "url": ""
-        }
-    ]
-}
-    </script>
 
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef } = React;
         
         const BASE_DOMAIN = 'du-cray.eu';
+        const DOZZLE_URL = `https://dozzle.${BASE_DOMAIN}`;
+        const GLANCES_URL = `https://glances.${BASE_DOMAIN}`;
 
         const Icon = ({ name, size = 18, className = "" }) => {
             useEffect(() => { if (window.lucide) window.lucide.createIcons(); }, [name]);
             return <i data-lucide={name} className={className} style={{ width: size, height: size }}></i>;
         };
 
-        const App = () => {
-            const searchRef = useRef(null);
-            const [searchTerm, setSearchTerm] = useState('');
-            const [isModalOpen, setIsModalOpen] = useState(false);
-            const [isCatModalOpen, setIsCatModalOpen] = useState(false);
-            const [isTerminalOpen, setIsTerminalOpen] = useState(false);
-            const [isSSHModalOpen, setIsSSHModalOpen] = useState(false);
-            const [isEditMode, setIsEditMode] = useState(false);
-            const [sshCommand, setSshCommand] = useState('');
-            const [statuses, setStatuses] = useState({});
-            
-            const [editingId, setEditingId] = useState(null);
-            const [editingCatId, setEditingCatId] = useState(null);
-            const [draggedServiceId, setDraggedServiceId] = useState(null);
-            const [dragOverId, setDragOverId] = useState(null);
-            const [isSynced, setIsSynced] = useState(true);
-
-            const loadInitialData = (key) => {
-                const saved = localStorage.getItem(key);
-                if (saved) return JSON.parse(saved);
-                const dataElement = document.getElementById('dashboard-data');
-                const initialData = JSON.parse(dataElement.textContent);
-                return initialData[key.replace('dash_', '')];
-            };
-
-            const [categories, setCategories] = useState(() => loadInitialData('dash_categories'));
-            const [services, setServices] = useState(() => loadInitialData('dash_services'));
-
-            useEffect(() => { 
-                localStorage.setItem('dash_categories', JSON.stringify(categories)); 
-                checkSync();
-            }, [categories]);
-
-            useEffect(() => { 
-                localStorage.setItem('dash_services', JSON.stringify(services)); 
-                checkSync();
-                services.forEach(s => checkHealth(s));
-            }, [services]);
-
-            const checkSync = () => {
-                const dataElement = document.getElementById('dashboard-data');
-                if (!dataElement) return;
-                try {
-                    const fileData = JSON.parse(dataElement.textContent);
-                    const currentData = { categories, services };
-                    setIsSynced(JSON.stringify(fileData) === JSON.stringify(currentData));
-                } catch(e) { console.error(e); }
-            };
-
-            const checkHealth = async (service) => {
-                const url = service.url || `https://${service.id}.${BASE_DOMAIN}`;
-                setStatuses(prev => ({ ...prev, [service.id]: 'checking' }));
-                
-                try {
-                    await fetch(url, { mode: 'no-cors', cache: 'no-cache' });
-                    setStatuses(prev => ({ ...prev, [service.id]: 'online' }));
-                } catch (e) {
-                    setStatuses(prev => ({ ...prev, [service.id]: 'offline' }));
-                }
-            };
-
-            const generateSSHCommand = async () => {
-                try {
-                    const response = await fetch(window.location.href);
-                    let source = await response.text();
-                    
-                    const currentData = { categories, services };
-                    const dataString = JSON.stringify(currentData, null, 4);
-                    const dataRegex = /(<script\b[^>]*?id="dashboard-data"[^>]*?>)([\s\S]*?)(<\/script>)/i;
-                    
-                    if (dataRegex.test(source)) {
-                        source = source.replace(dataRegex, `$1\n        ${dataString}\n    $3`);
-                        const command = `cat << 'EOF' > /opt/homelab-dash/index.html\n${source}\nEOF`;
-                        setSshCommand(command);
-                        setIsSSHModalOpen(true);
-                    }
-                } catch (err) {
-                    console.error("Failed to generate command", err);
-                }
-            };
-
-            const copyToClipboard = () => {
-                const el = document.createElement('textarea');
-                el.value = sshCommand;
-                document.body.appendChild(el);
-                el.select();
-                document.execCommand('copy');
-                document.body.removeChild(el);
-                setIsSynced(true);
-            };
-
-            useEffect(() => {
-                const handleKey = (e) => { 
-                    if (e.key === '/' && !isModalOpen && !isTerminalOpen) { 
-                        e.preventDefault(); 
-                        searchRef.current?.focus(); 
-                    } 
-                };
-                window.addEventListener('keydown', handleKey);
-                return () => window.removeEventListener('keydown', handleKey);
-            }, [isModalOpen, isTerminalOpen]);
-
-            const [formData, setFormData] = useState({ id: '', name: '', cat: 'admin', icon: 'package', desc: '', color: 'bg-slate-500', url: '' });
-            const [catFormData, setCatFormData] = useState({ id: '', name: '', icon: 'folder' });
-
-            const handleSaveService = (e) => {
-                e.preventDefault();
-                if (!formData.name || !formData.id) return;
-                if (editingId !== null) setServices(services.map(s => s.id === editingId ? formData : s));
-                else setServices([...services, formData]);
-                setEditingId(null);
-                setIsModalOpen(false);
-            };
-
-            const handleSaveCategory = (e) => {
-                e.preventDefault();
-                if (!catFormData.name || !catFormData.id) return;
-                if (editingCatId !== null) setCategories(categories.map(c => c.id === editingCatId ? catFormData : c));
-                else setCategories([...categories, catFormData]);
-                setEditingCatId(null);
-                setIsCatModalOpen(false);
-            };
-
-            const resetForm = () => { setFormData({ id: '', name: '', cat: 'admin', icon: 'package', desc: '', color: 'bg-slate-500', url: '' }); setEditingId(null); setIsModalOpen(false); };
-            const resetCatForm = () => { setCatFormData({ id: '', name: '', icon: 'folder' }); setEditingCatId(null); setIsCatModalOpen(false); };
+        const MiniChart = ({ data, color }) => {
+            if (!data || data.length < 2) return null;
+            const max = Math.max(...data, 1);
+            const points = data.map((value, index) => {
+                const x = (index / (data.length - 1)) * 100;
+                const y = 100 - (value / max) * 100;
+                return `${x},${y}`;
+            }).join(' ');
             
             return (
-                <div className="min-h-screen p-4 md:p-8 lg:p-10 relative max-w-[1700px] mx-auto">
-                    <header className="mb-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-blue-600 rounded-2xl shadow-lg shadow-blue-900/20">
-                                <Icon name="terminal" className="text-white" size={24} />
+                <svg viewBox="0 0 100 100" className="w-full h-8" preserveAspectRatio="none">
+                    <polyline
+                        points={points}
+                        fill="none"
+                        stroke={color}
+                        strokeWidth="2"
+                        vectorEffect="non-scaling-stroke"
+                    />
+                </svg>
+            );
+        };
+
+        const App = () => {
+            const [searchTerm, setSearchTerm] = useState('');
+            const [isEditMode, setIsEditMode] = useState(false);
+            const [isTerminalOpen, setIsTerminalOpen] = useState(false);
+            const [isSSHModalOpen, setIsSSHModalOpen] = useState(false);
+            const [sshCommand, setSshCommand] = useState('');
+            const [statuses, setStatuses] = useState({});
+            const [systemStats, setSystemStats] = useState(null);
+            const [metricsHistory, setMetricsHistory] = useState({ cpu: [], mem: [], disk: [] });
+            const [containerStats, setContainerStats] = useState({});
+            const [apiError, setApiError] = useState(null);
+            const [apiVersion, setApiVersion] = useState('4'); 
+            const [activeLogContainer, setActiveLogContainer] = useState(null);
+            const [dockerActionModal, setDockerActionModal] = useState(null);
+            
+            // Terminal Tabs State
+            const [terminalTabs, setTerminalTabs] = useState([{ id: 'default', name: 'Main Session' }]);
+            const [activeTabId, setActiveTabId] = useState('default');
+
+            const [categories, setCategories] = useState([]);
+            const [services, setServices] = useState([]);
+            const [isInitialLoading, setIsInitialLoading] = useState(true);
+            const originalData = useRef(null);
+
+            useEffect(() => {
+                const initData = async () => {
+                    try {
+                        const response = await fetch('config.json');
+                        const data = await response.json();
+                        originalData.current = data;
+                        setCategories(data.categories || []);
+                        setServices(data.services || []);
+                    } catch (e) {
+                        console.error("Erreur config.json", e);
+                    } finally {
+                        setIsInitialLoading(false);
+                    }
+                };
+                initData();
+            }, []);
+
+            useEffect(() => {
+                if (isInitialLoading) return;
+                const fetchAll = () => {
+                    fetchGlances();
+                    checkDockerContainers();
+                };
+                fetchAll();
+                const t = setInterval(fetchAll, 5000);
+                return () => clearInterval(t);
+            }, [services, isInitialLoading, apiVersion]);
+
+            const fetchGlances = async () => {
+                try {
+                    const response = await fetch(`${GLANCES_URL}/api/${apiVersion}/all`);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    const data = await response.json();
+                    
+                    const newStats = {
+                        cpu: Math.round(data.cpu?.total || 0),
+                        mem: Math.round(data.mem?.percent || 0),
+                        disk: Math.round(data.fs?.[0]?.percent || 0),
+                        load: data.load?.min1 || 0,
+                    };
+                    
+                    setSystemStats(newStats);
+                    
+                    // Stocker l'historique (max 60 points = 5 minutes)
+                    setMetricsHistory(prev => ({
+                        cpu: [...prev.cpu.slice(-59), newStats.cpu],
+                        mem: [...prev.mem.slice(-59), newStats.mem],
+                        disk: [...prev.disk.slice(-59), newStats.disk]
+                    }));
+                    
+                    setApiError(null);
+                } catch (e) {
+                    setApiError(e.message);
+                }
+            };
+
+            const checkDockerContainers = async () => {
+                try {
+                    const response = await fetch(`${GLANCES_URL}/api/${apiVersion}/docker`);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    const containers = await response.json();
+                    
+                    const newStatuses = {};
+                    const newContainerStats = {};
+                    
+                    services.forEach(service => {
+                        // Chercher un conteneur qui correspond au service
+                        const container = containers.find(c => 
+                            c.name?.includes(service.id) || 
+                            c.image?.includes(service.id) ||
+                            c.name === service.id
+                        );
+                        
+                        if (container) {
+                            newStatuses[service.id] = container.status === 'running' ? 'online' : 'offline';
+                            newContainerStats[service.id] = {
+                                uptime: container.uptime || 'N/A',
+                                cpu: Math.round(container.cpu?.total || 0),
+                                mem: Math.round(container.memory?.usage || 0) / (1024 * 1024), // MB
+                            };
+                        } else {
+                            // Si aucun conteneur trouvé, on le marque comme online par défaut
+                            newStatuses[service.id] = 'online';
+                        }
+                    });
+                    
+                    setStatuses(newStatuses);
+                    setContainerStats(newContainerStats);
+                } catch (e) {
+                    console.error('Erreur vérification Docker:', e);
+                    // En cas d'erreur, marquer tous comme online
+                    const fallbackStatuses = {};
+                    services.forEach(s => fallbackStatuses[s.id] = 'online');
+                    setStatuses(fallbackStatuses);
+                }
+            };
+
+            const addTerminalTab = () => {
+                const newId = `tab-${Date.now()}`;
+                setTerminalTabs([...terminalTabs, { id: newId, name: `Session ${terminalTabs.length + 1}` }]);
+                setActiveTabId(newId);
+            };
+
+            const removeTerminalTab = (e, id) => {
+                e.stopPropagation();
+                if (terminalTabs.length === 1) return;
+                const newTabs = terminalTabs.filter(t => t.id !== id);
+                setTerminalTabs(newTabs);
+                if (activeTabId === id) setActiveTabId(newTabs[newTabs.length - 1].id);
+            };
+
+            const generateSSHCommand = () => {
+                const dataString = JSON.stringify({ categories, services }, null, 4);
+                setSshCommand(`cat << 'EOF' > /opt/homelab-dash/config.json\n${dataString}\nEOF`);
+                setIsSSHModalOpen(true);
+            };
+
+            if (isInitialLoading) return <div className="min-h-screen flex items-center justify-center bg-[#020617] text-blue-500 font-mono animate-pulse">BOOTING_CORE_INTERFACE...</div>;
+
+            return (
+                <div className="min-h-screen p-6 md:p-10 max-w-[1800px] mx-auto">
+                    {/* TOP BAR */}
+                    <div className="mb-12 flex flex-col lg:flex-row gap-8 items-center justify-between border-b border-slate-800 pb-8">
+                        <div className="flex items-center gap-5">
+                            <div className="p-4 bg-blue-600 rounded-2xl shadow-xl shadow-blue-900/40">
+                                <Icon name="terminal" className="text-white" size={28} />
                             </div>
-                            <div className="flex flex-col">
-                                <h1 className="text-3xl font-black tracking-tight uppercase italic text-white leading-none">Command Center</h1>
-                                <div className="flex items-center gap-2 mt-2">
-                                    <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[8px] font-black uppercase tracking-widest ${isSynced ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-orange-500/10 text-orange-400 border-orange-500/20'}`}>
-                                        <div className={`w-1 h-1 rounded-full ${isSynced ? 'bg-emerald-500' : 'bg-orange-500 animate-pulse'}`}></div>
-                                        {isSynced ? 'Synchronisé' : 'Modifié localement'}
-                                    </div>
-                                    <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">{BASE_DOMAIN}</p>
+                            <div>
+                                <h1 className="text-3xl font-black uppercase italic tracking-tighter text-white">Command Center</h1>
+                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em] mt-1">{BASE_DOMAIN} • API V{apiVersion}</p>
+                            </div>
+                        </div>
+
+                        {/* METRICS */}
+                        <div className="flex flex-1 max-w-2xl gap-6 items-center px-10">
+                            <div className="flex-1">
+                                <div className="flex justify-between text-[10px] font-black uppercase mb-1.5">
+                                    <span className="text-slate-500">Processor</span>
+                                    <span className={apiError ? "text-red-500" : "text-blue-400"}>{apiError ? "ERR" : `${systemStats?.cpu}%`}</span>
+                                </div>
+                                <div className="metric-bar"><div className="metric-progress bg-blue-500" style={{ width: `${systemStats?.cpu || 0}%` }}></div></div>
+                                <div className="mt-2"><MiniChart data={metricsHistory.cpu} color="#3b82f6" /></div>
+                            </div>
+                            <div className="flex-1">
+                                <div className="flex justify-between text-[10px] font-black uppercase mb-1.5">
+                                    <span className="text-slate-500">Memory</span>
+                                    <span className={apiError ? "text-red-500" : "text-emerald-400"}>{apiError ? "ERR" : `${systemStats?.mem}%`}</span>
+                                </div>
+                                <div className="metric-bar"><div className="metric-progress bg-emerald-500" style={{ width: `${systemStats?.mem || 0}%` }}></div></div>
+                                <div className="mt-2"><MiniChart data={metricsHistory.mem} color="#10b981" /></div>
+                            </div>
+                            <div className="flex-1">
+                                <div className="flex justify-between text-[10px] font-black uppercase mb-1.5">
+                                    <span className="text-slate-500">Disk</span>
+                                    <span className={apiError ? "text-red-500" : "text-purple-400"}>{apiError ? "ERR" : `${systemStats?.disk}%`}</span>
+                                </div>
+                                <div className="metric-bar"><div className="metric-progress bg-purple-500" style={{ width: `${systemStats?.disk || 0}%` }}></div></div>
+                                <div className="mt-2"><MiniChart data={metricsHistory.disk} color="#a855f7" /></div>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-4">
+                            {/* STATUS BADGE */}
+                            <div className="px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 flex items-center gap-3">
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                                    <span className="text-[10px] font-black uppercase text-emerald-400">
+                                        {Object.values(statuses).filter(s => s === 'online').length}
+                                    </span>
+                                </div>
+                                <div className="w-px h-4 bg-slate-700"></div>
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-2 h-2 rounded-full bg-slate-600"></div>
+                                    <span className="text-[10px] font-black uppercase text-slate-500">
+                                        {services.length}
+                                    </span>
                                 </div>
                             </div>
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-3">
-                            <div className="relative">
-                                <Icon name="search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                                <input 
-                                    ref={searchRef} type="text" placeholder="Filtre..."
-                                    className="bg-slate-900 border border-slate-800 rounded-xl py-2.5 pl-9 pr-4 w-full md:w-40 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all text-xs font-medium text-white"
-                                    value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                                />
+                            <div className="relative group">
+                                <Icon name="search" size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-blue-500 transition-colors" />
+                                <input type="text" placeholder="Rechercher..." className="bg-slate-900 border border-slate-800 rounded-xl py-2 pl-9 pr-4 w-48 focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-xs font-bold" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                             </div>
-                            
-                            <div className="flex items-center bg-slate-900/50 p-1 rounded-xl border border-slate-800">
-                                <button 
-                                    onClick={() => setIsEditMode(!isEditMode)} 
-                                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${isEditMode ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-                                >
-                                    {isEditMode ? 'Unlock' : 'Lock'}
-                                </button>
-                            </div>
-
-                            {isEditMode && (
-                                <>
-                                    <button onClick={generateSSHCommand} className="bg-emerald-600 hover:bg-emerald-500 text-white p-2.5 rounded-xl transition-all shadow-lg flex items-center gap-2 px-4 group">
-                                        <Icon name="command" size={18} />
-                                        <span className="text-[10px] font-black uppercase tracking-widest">Deploy</span>
-                                    </button>
-                                    <button onClick={() => setIsCatModalOpen(true)} className="bg-slate-900 hover:bg-slate-800 text-slate-400 p-2.5 rounded-xl border border-slate-800 transition-all">
-                                        <Icon name="folder-cog" size={18} />
-                                    </button>
-                                    <button onClick={() => { resetForm(); setIsModalOpen(true); }} className="bg-blue-600 hover:bg-blue-500 text-white p-2.5 rounded-xl shadow-lg transition-all">
-                                        <Icon name="plus" size={18} />
-                                    </button>
-                                </>
-                            )}
-                            <button onClick={() => setIsTerminalOpen(true)} className="bg-zinc-800 hover:bg-zinc-700 text-emerald-400 p-2.5 rounded-xl border border-zinc-700 shadow-lg transition-all" title="Terminal">
-                                <Icon name="terminal" size={18} />
-                            </button>
+                            <button onClick={() => setIsEditMode(!isEditMode)} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${isEditMode ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-900 text-slate-500 hover:text-slate-300'}`}>{isEditMode ? 'Unlock' : 'Lock'}</button>
+                            <button onClick={() => setIsTerminalOpen(true)} className="bg-zinc-800 hover:bg-zinc-700 text-emerald-400 p-2.5 rounded-xl border border-zinc-700 shadow-lg transition-all"><Icon name="terminal" size={20} /></button>
                         </div>
-                    </header>
+                    </div>
 
-                    <main className="grid grid-cols-1 xl:grid-cols-2 gap-x-10 gap-y-12">
+                    {/* GRID */}
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-12">
                         {categories.map(cat => {
                             const catServices = services.filter(s => s.cat === cat.id && s.name.toLowerCase().includes(searchTerm.toLowerCase()));
-                            if (catServices.length === 0 && searchTerm) return null;
+                            if (catServices.length === 0) return null;
                             return (
-                                <section key={cat.id} className="flex flex-col">
-                                    <div className="flex items-center gap-3 mb-5 px-1">
-                                        <div className="w-1 h-5 bg-blue-500 rounded-full"></div>
-                                        <h2 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">{cat.name}</h2>
-                                        <div className="flex-1 border-b border-slate-900 ml-4 opacity-30"></div>
+                                <section key={cat.id}>
+                                    <div className="flex items-center gap-4 mb-6">
+                                        <div className="w-1.5 h-6 bg-blue-500 rounded-full shadow-[0_0_15px_rgba(59,130,246,0.6)]"></div>
+                                        <h2 className="text-sm font-black uppercase tracking-[0.25em] text-slate-400">{cat.name}</h2>
                                     </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        {catServices.map(service => {
-                                            const url = service.url || `https://${service.id}.${BASE_DOMAIN}`;
-                                            const status = statuses[service.id] || 'checking';
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        {catServices.map(s => {
+                                            const status = statuses[s.id] || 'checking';
                                             return (
-                                                <div key={service.id} className="group relative flex items-center gap-4 bg-slate-900/40 border border-slate-800/50 p-3 rounded-2xl hover:border-blue-500/50 transition-all duration-300">
-                                                    <div className={`p-2.5 rounded-xl ${service.color} text-white shadow-lg shrink-0 relative`}>
-                                                        <Icon name={service.icon} size={20} />
-                                                        <div className={`absolute -top-1 -right-1 status-dot border border-slate-950 status-${status}`}></div>
+                                                <div key={s.id} className="group relative flex items-center gap-4 bg-slate-900/30 border border-slate-800/40 p-4 rounded-2xl hover:bg-slate-900/60 hover:border-blue-500/40 transition-all">
+                                                    <div className={`p-3 rounded-xl ${s.color} text-white shadow-lg relative`}>
+                                                        <Icon name={s.icon} size={22} />
+                                                        <div className={`absolute -top-1.5 -right-1.5 status-dot border-2 border-slate-950 status-${status}`}></div>
                                                     </div>
-                                                    <div className="flex-1 min-w-0 pr-8">
-                                                        <div className="flex items-center gap-2">
-                                                            <h3 className="text-[11px] font-black uppercase tracking-tight text-white truncate mb-0.5">{service.name}</h3>
-                                                            {status === 'offline' && <span className="text-[7px] text-red-500 font-black uppercase tracking-tighter">Timed Out</span>}
+                                                    <div className="flex-1 min-w-0 pr-10">
+                                                        <h3 className="text-xs font-black uppercase tracking-tight text-white mb-0.5">{s.name}</h3>
+                                                        <div className="flex flex-col gap-0.5">
+                                                            {s.desc && <p className="text-[10px] text-slate-400 font-medium leading-tight truncate">{s.desc}</p>}
+                                                            <p className="text-[9px] font-mono text-slate-600 italic truncate">/{s.id}</p>
+                                                            {containerStats[s.id]?.uptime && (
+                                                                <p className="text-[9px] font-mono text-blue-400 mt-1">
+                                                                    ⏱ {containerStats[s.id].uptime}
+                                                                </p>
+                                                            )}
                                                         </div>
-                                                        <p className="text-[9px] font-mono text-slate-600 truncate italic leading-none">{url.replace('https://','')}</p>
                                                     </div>
-                                                    <div className="absolute right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        {isEditMode ? (
-                                                            <>
-                                                                <button onClick={() => { setFormData(service); setEditingId(service.id); setIsModalOpen(true); }} className="p-1.5 text-slate-500 hover:text-blue-400 bg-slate-950/50 rounded-lg"><Icon name="pencil" size={12} /></button>
-                                                                <button onClick={() => { if(confirm('Kill?')) setServices(services.filter(s => s.id !== service.id)); }} className="p-1.5 text-slate-500 hover:text-red-500 bg-slate-950/50 rounded-lg"><Icon name="trash-2" size={12} /></button>
-                                                            </>
-                                                        ) : (
-                                                            <button onClick={() => checkHealth(service)} className="p-1.5 text-slate-500 hover:text-blue-400 bg-slate-950/50 rounded-lg" title="Refresh Status"><Icon name="refresh-cw" size={12} /></button>
+                                                    <div className="absolute right-4 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
+                                                        {containerStats[s.id] && (
+                                                            <button onClick={() => setDockerActionModal(s)} className="p-2 text-slate-500 hover:text-orange-400 hover:bg-orange-400/10 rounded-lg transition-all" title="Docker Actions"><Icon name="settings" size={16} /></button>
                                                         )}
-                                                        <a href={url} target="_blank" className="p-1.5 text-slate-500 hover:text-blue-400 transition-colors"><Icon name="external-link" size={12} /></a>
+                                                        <button onClick={() => setActiveLogContainer(s)} className="p-2 text-slate-500 hover:text-emerald-400 hover:bg-emerald-400/10 rounded-lg transition-all" title="Logs"><Icon name="file-text" size={16} /></button>
+                                                        <a href={s.url || `https://${s.id}.${BASE_DOMAIN}`} target="_blank" className="p-2 text-slate-500 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg transition-all"><Icon name="external-link" size={16} /></a>
                                                     </div>
                                                 </div>
                                             );
@@ -492,89 +324,121 @@
                                 </section>
                             );
                         })}
-                    </main>
+                    </div>
 
-                    {/* MODALS */}
-                    {isSSHModalOpen && (
-                        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 modal-overlay">
-                            <div className="bg-slate-900 border border-slate-800 w-full max-w-2xl p-8 rounded-[2rem] shadow-2xl flex flex-col gap-6">
-                                <div className="flex justify-between items-center">
-                                    <h2 className="text-xl font-black uppercase italic text-emerald-400">Deploying Update</h2>
-                                    <button onClick={() => setIsSSHModalOpen(false)} className="text-slate-500 hover:text-white"><Icon name="x" size={24} /></button>
+                    {/* SIDE PANEL LOGS */}
+                    <div className={`fixed top-0 right-0 h-full w-full md:w-[700px] z-[200] glass log-panel ${activeLogContainer ? 'open' : ''}`}>
+                        <div className="flex flex-col h-full bg-slate-950">
+                            <div className="p-6 bg-slate-900/50 border-b border-slate-800 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-lg"><Icon name="activity" size={20} /></div>
+                                    <span className="text-xs font-black uppercase tracking-widest text-white font-mono">
+                                        Live Trace: {activeLogContainer?.name || activeLogContainer?.id}
+                                    </span>
                                 </div>
-                                <div className="bg-black rounded-xl p-5 border border-slate-800 relative group">
-                                    <pre className="text-[10px] text-emerald-500 overflow-x-auto whitespace-pre-wrap h-48 no-scrollbar">
-                                        {sshCommand}
-                                    </pre>
-                                    <button onClick={copyToClipboard} className="absolute top-4 right-4 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-[9px] font-black uppercase transition-all shadow-xl">Copy Shell Command</button>
-                                </div>
-                                <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest text-center">Execute this via SSH to persist configuration.</p>
+                                <button onClick={() => setActiveLogContainer(null)} className="text-slate-500 hover:text-white transition-colors p-2 hover:bg-slate-800 rounded-xl"><Icon name="x" size={28} /></button>
+                            </div>
+                            <div className="flex-1 bg-black">
+                                {activeLogContainer && (
+                                    <iframe 
+                                        src={activeLogContainer.logsUrl || `${DOZZLE_URL}/show?name=${activeLogContainer.id}`}
+                                        className="w-full h-full border-none" 
+                                        title="Logs"
+                                    />
+                                )}
                             </div>
                         </div>
-                    )}
+                    </div>
 
-                    {isTerminalOpen && (
-                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-8 modal-overlay">
-                            <div className="bg-black border border-zinc-800 w-full h-full max-w-6xl flex flex-col rounded-none md:rounded-3xl shadow-2xl overflow-hidden">
-                                <div className="bg-zinc-900 p-4 flex items-center justify-between border-b border-zinc-800 text-emerald-500 font-mono italic text-xs uppercase tracking-widest">
-                                    <span>ssh root@{BASE_DOMAIN}</span>
-                                    <button onClick={() => setIsTerminalOpen(false)} className="text-zinc-500 hover:text-white transition-colors"><Icon name="x" size={24} /></button>
-                                </div>
-                                <div className="flex-1 bg-black relative">
-                                    <iframe src={`https://terminal.${BASE_DOMAIN}`} className="w-full h-full border-none" allow="clipboard-read; clipboard-write" />
-                                </div>
+                    {/* TERMINAL MODAL WITH TABS */}
+                    <div className={`fixed inset-0 z-[150] flex items-center justify-center p-0 md:p-12 modal-overlay transition-all duration-300 ${isTerminalOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'}`}>
+                        <div className="bg-black border border-zinc-800 w-full h-full max-w-7xl flex flex-col rounded-none md:rounded-[2.5rem] shadow-2xl overflow-hidden">
+                            {/* Header Term */}
+                            <div className="bg-zinc-900 p-5 flex items-center justify-between border-b border-zinc-800">
+                                <span className="text-emerald-500 font-mono italic text-xs uppercase font-black tracking-widest">Fleet Operations Console</span>
+                                <button onClick={() => setIsTerminalOpen(false)} className="text-zinc-500 hover:text-white transition-colors"><Icon name="x" size={28} /></button>
                             </div>
-                        </div>
-                    )}
-
-                    {isCatModalOpen && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay">
-                            <div className="bg-slate-900 border border-slate-800 w-full max-w-lg p-8 rounded-[2rem] shadow-2xl flex flex-col max-h-[90vh]">
-                                <div className="flex justify-between items-center mb-8">
-                                    <h2 className="text-xl font-black uppercase italic text-blue-500">Infrastructure Sectors</h2>
-                                    <button onClick={resetCatForm} className="text-slate-500 hover:text-white"><Icon name="x" size={24} /></button>
-                                </div>
-                                <form onSubmit={handleSaveCategory} className="mb-8 space-y-4">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <input type="text" className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs font-bold text-white outline-none" placeholder="ID" value={catFormData.id} onChange={(e) => setCatFormData({...catFormData, id: e.target.value.toLowerCase()})} />
-                                        <input type="text" className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs font-bold text-white outline-none" placeholder="Label" value={catFormData.name} onChange={(e) => setCatFormData({...catFormData, name: e.target.value})} />
-                                    </div>
-                                    <button type="submit" className="w-full bg-blue-600 py-4 text-white font-black uppercase text-[10px] rounded-xl shadow-lg">Commit Sector</button>
-                                </form>
-                                <div className="overflow-y-auto no-scrollbar space-y-2">
-                                    {categories.map(cat => (
-                                        <div key={cat.id} className="flex items-center justify-between p-4 bg-slate-950/50 border border-slate-800 rounded-2xl">
-                                            <div className="flex items-center gap-4">
-                                                <div className="text-blue-400"><Icon name={cat.icon || 'folder'} /></div>
-                                                <div className="text-white text-[10px] font-black uppercase">{cat.name}</div>
-                                            </div>
-                                            <div className="flex gap-1">
-                                                <button onClick={() => {setCatFormData(cat); setEditingCatId(cat.id);}} className="p-2 text-slate-500 hover:text-blue-400"><Icon name="pencil" size={14} /></button>
-                                                <button onClick={() => setCategories(categories.filter(c => c.id !== cat.id))} className="p-2 text-slate-500 hover:text-red-500"><Icon name="trash-2" size={14} /></button>
-                                            </div>
+                            
+                            {/* Tab Bar */}
+                            <div className="bg-slate-950 px-4 flex items-center gap-1 border-b border-zinc-800">
+                                <div className="flex-1 flex items-center gap-1 overflow-x-auto no-scrollbar">
+                                    {terminalTabs.map(tab => (
+                                        <div 
+                                            key={tab.id} 
+                                            onClick={() => setActiveTabId(tab.id)} 
+                                            className={`group px-6 py-3 text-[10px] font-black uppercase tracking-widest cursor-pointer transition-all flex items-center gap-4 ${activeTabId === tab.id ? 'tab-active' : 'text-slate-600 hover:text-slate-400 bg-slate-900/20'}`}
+                                        >
+                                            <span>{tab.name}</span>
+                                            {terminalTabs.length > 1 && (
+                                                <button onClick={(e) => removeTerminalTab(e, tab.id)} className="opacity-0 group-hover:opacity-100 hover:text-red-500 transition-opacity">
+                                                    <Icon name="x-circle" size={14} />
+                                                </button>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
+                                <button onClick={addTerminalTab} className="p-3 text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-colors" title="New Session">
+                                    <Icon name="plus-circle" size={18} />
+                                </button>
+                            </div>
+
+                            {/* Multi-Iframe Container */}
+                            <div className="flex-1 relative bg-black">
+                                {terminalTabs.map(tab => (
+                                    <iframe 
+                                        key={tab.id} 
+                                        src={`https://terminal.${BASE_DOMAIN}`} 
+                                        className={`absolute inset-0 w-full h-full border-none transition-opacity duration-300 ${activeTabId === tab.id ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`} 
+                                        allow="clipboard-read; clipboard-write" 
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* SSH DEPLOY MODAL */}
+                    {isSSHModalOpen && (
+                        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 modal-overlay" onClick={() => setIsSSHModalOpen(false)}>
+                            <div className="bg-slate-900 border border-slate-800 w-full max-w-2xl p-10 rounded-[2.5rem] shadow-2xl flex flex-col gap-6" onClick={e => e.stopPropagation()}>
+                                <div className="flex justify-between items-center">
+                                    <h2 className="text-2xl font-black uppercase italic text-emerald-400 font-mono">deploy_config.sh</h2>
+                                    <button onClick={() => setIsSSHModalOpen(false)} className="text-slate-500 hover:text-white"><Icon name="x" size={28} /></button>
+                                </div>
+                                <div className="bg-black rounded-2xl p-6 border border-slate-800 relative">
+                                    <pre className="text-[11px] text-emerald-500 overflow-x-auto whitespace-pre-wrap h-64 no-scrollbar">{sshCommand}</pre>
+                                    <button onClick={() => { navigator.clipboard.writeText(sshCommand); setIsSSHModalOpen(false); }} className="absolute bottom-6 right-6 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-xl text-xs font-black uppercase shadow-xl transition-all active:scale-95">Copier le script</button>
+                                </div>
                             </div>
                         </div>
                     )}
 
-                    {isModalOpen && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay">
-                            <div className="bg-slate-900 border border-slate-800 w-full max-w-md p-10 rounded-[2.5rem] shadow-2xl">
-                                <h2 className="text-xl font-black uppercase italic text-blue-500 mb-10">{editingId ? 'Modify Node' : 'Initialize Node'}</h2>
-                                <form onSubmit={handleSaveService} className="space-y-6">
-                                    <input autoFocus type="text" className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-5 text-sm font-bold text-white outline-none" placeholder="Label" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} />
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <input type="text" className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-5 text-sm font-bold text-white outline-none" placeholder="Subdomain" value={formData.id} onChange={(e) => setFormData({...formData, id: e.target.value.toLowerCase()})} />
-                                        <select className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-5 text-sm font-bold text-white outline-none" value={formData.cat} onChange={(e) => setFormData({...formData, cat: e.target.value})}>
-                                            {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
-                                        </select>
-                                    </div>
-                                    <input type="text" className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-5 text-sm font-bold text-white outline-none" placeholder="Protocol URL Override" value={formData.url} onChange={(e) => setFormData({...formData, url: e.target.value})} />
-                                    <button type="submit" className="w-full bg-blue-600 py-6 text-white font-black uppercase text-[10px] rounded-3xl shadow-xl transition-all active:scale-95">Commit Changes</button>
-                                </form>
-                                <button onClick={resetForm} className="w-full mt-6 text-slate-600 text-[10px] font-black uppercase tracking-widest hover:text-white transition-colors">Abort</button>
+                    {/* DOCKER ACTIONS MODAL */}
+                    {dockerActionModal && (
+                        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 modal-overlay" onClick={() => setDockerActionModal(null)}>
+                            <div className="bg-slate-900 border border-slate-800 w-full max-w-md p-10 rounded-[2.5rem] shadow-2xl flex flex-col gap-6" onClick={e => e.stopPropagation()}>
+                                <div className="flex justify-between items-center">
+                                    <h2 className="text-xl font-black uppercase italic text-orange-400 font-mono">{dockerActionModal.name}</h2>
+                                    <button onClick={() => setDockerActionModal(null)} className="text-slate-500 hover:text-white"><Icon name="x" size={28} /></button>
+                                </div>
+                                <div className="flex flex-col gap-3">
+                                    <button className="w-full bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/40 text-blue-400 px-6 py-4 rounded-xl text-sm font-black uppercase transition-all flex items-center justify-center gap-3">
+                                        <Icon name="rotate-cw" size={20} />
+                                        <span>Restart Container</span>
+                                    </button>
+                                    <button className="w-full bg-red-600/20 hover:bg-red-600/30 border border-red-500/40 text-red-400 px-6 py-4 rounded-xl text-sm font-black uppercase transition-all flex items-center justify-center gap-3">
+                                        <Icon name="square" size={20} />
+                                        <span>Stop Container</span>
+                                    </button>
+                                    <button className="w-full bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-400 px-6 py-4 rounded-xl text-sm font-black uppercase transition-all flex items-center justify-center gap-3">
+                                        <Icon name="play" size={20} />
+                                        <span>Start Container</span>
+                                    </button>
+                                </div>
+                                <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
+                                    <p className="text-[10px] text-yellow-400 font-mono text-center">
+                                        ⚠️ Ces actions nécessitent une API backend pour contrôler Docker. Utilisez Portainer pour le moment.
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     )}
