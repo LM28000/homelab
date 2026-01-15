@@ -45,6 +45,28 @@
             return <i data-lucide={name} className={className} style={{ width: size, height: size }}></i>;
         };
 
+        const MiniChart = ({ data, color }) => {
+            if (!data || data.length < 2) return null;
+            const max = Math.max(...data, 1);
+            const points = data.map((value, index) => {
+                const x = (index / (data.length - 1)) * 100;
+                const y = 100 - (value / max) * 100;
+                return `${x},${y}`;
+            }).join(' ');
+            
+            return (
+                <svg viewBox="0 0 100 100" className="w-full h-8" preserveAspectRatio="none">
+                    <polyline
+                        points={points}
+                        fill="none"
+                        stroke={color}
+                        strokeWidth="2"
+                        vectorEffect="non-scaling-stroke"
+                    />
+                </svg>
+            );
+        };
+
         const App = () => {
             const [searchTerm, setSearchTerm] = useState('');
             const [isEditMode, setIsEditMode] = useState(false);
@@ -53,9 +75,12 @@
             const [sshCommand, setSshCommand] = useState('');
             const [statuses, setStatuses] = useState({});
             const [systemStats, setSystemStats] = useState(null);
+            const [metricsHistory, setMetricsHistory] = useState({ cpu: [], mem: [], disk: [] });
+            const [containerStats, setContainerStats] = useState({});
             const [apiError, setApiError] = useState(null);
             const [apiVersion, setApiVersion] = useState('4'); 
             const [activeLogContainer, setActiveLogContainer] = useState(null);
+            const [dockerActionModal, setDockerActionModal] = useState(null);
             
             // Terminal Tabs State
             const [terminalTabs, setTerminalTabs] = useState([{ id: 'default', name: 'Main Session' }]);
@@ -86,11 +111,11 @@
             useEffect(() => {
                 if (isInitialLoading) return;
                 const fetchAll = () => {
-                    services.forEach(s => checkHealth(s));
                     fetchGlances();
+                    checkDockerContainers();
                 };
                 fetchAll();
-                const t = setInterval(fetchGlances, 5000);
+                const t = setInterval(fetchAll, 5000);
                 return () => clearInterval(t);
             }, [services, isInitialLoading, apiVersion]);
 
@@ -99,24 +124,67 @@
                     const response = await fetch(`${GLANCES_URL}/api/${apiVersion}/all`);
                     if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     const data = await response.json();
-                    setSystemStats({
-                        cpu: data.cpu?.total || 0,
-                        mem: data.mem?.percent || 0,
+                    
+                    const newStats = {
+                        cpu: Math.round(data.cpu?.total || 0),
+                        mem: Math.round(data.mem?.percent || 0),
+                        disk: Math.round(data.fs?.[0]?.percent || 0),
                         load: data.load?.min1 || 0,
-                    });
+                    };
+                    
+                    setSystemStats(newStats);
+                    
+                    // Stocker l'historique (max 60 points = 5 minutes)
+                    setMetricsHistory(prev => ({
+                        cpu: [...prev.cpu.slice(-59), newStats.cpu],
+                        mem: [...prev.mem.slice(-59), newStats.mem],
+                        disk: [...prev.disk.slice(-59), newStats.disk]
+                    }));
+                    
                     setApiError(null);
                 } catch (e) {
                     setApiError(e.message);
                 }
             };
 
-            const checkHealth = async (service) => {
-                const url = service.url || `https://${service.id}.${BASE_DOMAIN}`;
+            const checkDockerContainers = async () => {
                 try {
-                    await fetch(url, { mode: 'no-cors' });
-                    setStatuses(prev => ({ ...prev, [service.id]: 'online' }));
+                    const response = await fetch(`${GLANCES_URL}/api/${apiVersion}/docker`);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    const containers = await response.json();
+                    
+                    const newStatuses = {};
+                    const newContainerStats = {};
+                    
+                    services.forEach(service => {
+                        // Chercher un conteneur qui correspond au service
+                        const container = containers.find(c => 
+                            c.name?.includes(service.id) || 
+                            c.image?.includes(service.id) ||
+                            c.name === service.id
+                        );
+                        
+                        if (container) {
+                            newStatuses[service.id] = container.status === 'running' ? 'online' : 'offline';
+                            newContainerStats[service.id] = {
+                                uptime: container.uptime || 'N/A',
+                                cpu: Math.round(container.cpu?.total || 0),
+                                mem: Math.round(container.memory?.usage || 0) / (1024 * 1024), // MB
+                            };
+                        } else {
+                            // Si aucun conteneur trouvé, on le marque comme online par défaut
+                            newStatuses[service.id] = 'online';
+                        }
+                    });
+                    
+                    setStatuses(newStatuses);
+                    setContainerStats(newContainerStats);
                 } catch (e) {
-                    setStatuses(prev => ({ ...prev, [service.id]: 'offline' }));
+                    console.error('Erreur vérification Docker:', e);
+                    // En cas d'erreur, marquer tous comme online
+                    const fallbackStatuses = {};
+                    services.forEach(s => fallbackStatuses[s.id] = 'online');
+                    setStatuses(fallbackStatuses);
                 }
             };
 
@@ -157,13 +225,14 @@
                         </div>
 
                         {/* METRICS */}
-                        <div className="flex flex-1 max-w-2xl gap-10 items-center px-10">
+                        <div className="flex flex-1 max-w-2xl gap-6 items-center px-10">
                             <div className="flex-1">
                                 <div className="flex justify-between text-[10px] font-black uppercase mb-1.5">
                                     <span className="text-slate-500">Processor</span>
                                     <span className={apiError ? "text-red-500" : "text-blue-400"}>{apiError ? "ERR" : `${systemStats?.cpu}%`}</span>
                                 </div>
                                 <div className="metric-bar"><div className="metric-progress bg-blue-500" style={{ width: `${systemStats?.cpu || 0}%` }}></div></div>
+                                <div className="mt-2"><MiniChart data={metricsHistory.cpu} color="#3b82f6" /></div>
                             </div>
                             <div className="flex-1">
                                 <div className="flex justify-between text-[10px] font-black uppercase mb-1.5">
@@ -171,10 +240,35 @@
                                     <span className={apiError ? "text-red-500" : "text-emerald-400"}>{apiError ? "ERR" : `${systemStats?.mem}%`}</span>
                                 </div>
                                 <div className="metric-bar"><div className="metric-progress bg-emerald-500" style={{ width: `${systemStats?.mem || 0}%` }}></div></div>
+                                <div className="mt-2"><MiniChart data={metricsHistory.mem} color="#10b981" /></div>
+                            </div>
+                            <div className="flex-1">
+                                <div className="flex justify-between text-[10px] font-black uppercase mb-1.5">
+                                    <span className="text-slate-500">Disk</span>
+                                    <span className={apiError ? "text-red-500" : "text-purple-400"}>{apiError ? "ERR" : `${systemStats?.disk}%`}</span>
+                                </div>
+                                <div className="metric-bar"><div className="metric-progress bg-purple-500" style={{ width: `${systemStats?.disk || 0}%` }}></div></div>
+                                <div className="mt-2"><MiniChart data={metricsHistory.disk} color="#a855f7" /></div>
                             </div>
                         </div>
 
                         <div className="flex items-center gap-4">
+                            {/* STATUS BADGE */}
+                            <div className="px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 flex items-center gap-3">
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                                    <span className="text-[10px] font-black uppercase text-emerald-400">
+                                        {Object.values(statuses).filter(s => s === 'online').length}
+                                    </span>
+                                </div>
+                                <div className="w-px h-4 bg-slate-700"></div>
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-2 h-2 rounded-full bg-slate-600"></div>
+                                    <span className="text-[10px] font-black uppercase text-slate-500">
+                                        {services.length}
+                                    </span>
+                                </div>
+                            </div>
                             <div className="relative group">
                                 <Icon name="search" size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-blue-500 transition-colors" />
                                 <input type="text" placeholder="Rechercher..." className="bg-slate-900 border border-slate-800 rounded-xl py-2 pl-9 pr-4 w-48 focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-xs font-bold" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
@@ -209,10 +303,18 @@
                                                         <div className="flex flex-col gap-0.5">
                                                             {s.desc && <p className="text-[10px] text-slate-400 font-medium leading-tight truncate">{s.desc}</p>}
                                                             <p className="text-[9px] font-mono text-slate-600 italic truncate">/{s.id}</p>
+                                                            {containerStats[s.id]?.uptime && (
+                                                                <p className="text-[9px] font-mono text-blue-400 mt-1">
+                                                                    ⏱ {containerStats[s.id].uptime}
+                                                                </p>
+                                                            )}
                                                         </div>
                                                     </div>
-                                                    <div className="absolute right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
-                                                        <button onClick={() => setActiveLogContainer(s.id)} className="p-2 text-slate-500 hover:text-emerald-400 hover:bg-emerald-400/10 rounded-lg transition-all" title="Logs Directs"><Icon name="file-text" size={16} /></button>
+                                                    <div className="absolute right-4 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
+                                                        {containerStats[s.id] && (
+                                                            <button onClick={() => setDockerActionModal(s)} className="p-2 text-slate-500 hover:text-orange-400 hover:bg-orange-400/10 rounded-lg transition-all" title="Docker Actions"><Icon name="settings" size={16} /></button>
+                                                        )}
+                                                        <button onClick={() => setActiveLogContainer(s)} className="p-2 text-slate-500 hover:text-emerald-400 hover:bg-emerald-400/10 rounded-lg transition-all" title="Logs"><Icon name="file-text" size={16} /></button>
                                                         <a href={s.url || `https://${s.id}.${BASE_DOMAIN}`} target="_blank" className="p-2 text-slate-500 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg transition-all"><Icon name="external-link" size={16} /></a>
                                                     </div>
                                                 </div>
@@ -230,16 +332,18 @@
                             <div className="p-6 bg-slate-900/50 border-b border-slate-800 flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-lg"><Icon name="activity" size={20} /></div>
-                                    <span className="text-xs font-black uppercase tracking-widest text-white font-mono">Live Trace: {activeLogContainer}</span>
+                                    <span className="text-xs font-black uppercase tracking-widest text-white font-mono">
+                                        Live Trace: {activeLogContainer?.name || activeLogContainer?.id}
+                                    </span>
                                 </div>
                                 <button onClick={() => setActiveLogContainer(null)} className="text-slate-500 hover:text-white transition-colors p-2 hover:bg-slate-800 rounded-xl"><Icon name="x" size={28} /></button>
                             </div>
                             <div className="flex-1 bg-black">
                                 {activeLogContainer && (
                                     <iframe 
-                                        src={`${DOZZLE_URL}/show?name=${activeLogContainer}`} 
+                                        src={activeLogContainer.logsUrl || `${DOZZLE_URL}/show?name=${activeLogContainer.id}`}
                                         className="w-full h-full border-none" 
-                                        title="Dozzle Logs"
+                                        title="Logs"
                                     />
                                 )}
                             </div>
@@ -303,6 +407,37 @@
                                 <div className="bg-black rounded-2xl p-6 border border-slate-800 relative">
                                     <pre className="text-[11px] text-emerald-500 overflow-x-auto whitespace-pre-wrap h-64 no-scrollbar">{sshCommand}</pre>
                                     <button onClick={() => { navigator.clipboard.writeText(sshCommand); setIsSSHModalOpen(false); }} className="absolute bottom-6 right-6 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-xl text-xs font-black uppercase shadow-xl transition-all active:scale-95">Copier le script</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* DOCKER ACTIONS MODAL */}
+                    {dockerActionModal && (
+                        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 modal-overlay" onClick={() => setDockerActionModal(null)}>
+                            <div className="bg-slate-900 border border-slate-800 w-full max-w-md p-10 rounded-[2.5rem] shadow-2xl flex flex-col gap-6" onClick={e => e.stopPropagation()}>
+                                <div className="flex justify-between items-center">
+                                    <h2 className="text-xl font-black uppercase italic text-orange-400 font-mono">{dockerActionModal.name}</h2>
+                                    <button onClick={() => setDockerActionModal(null)} className="text-slate-500 hover:text-white"><Icon name="x" size={28} /></button>
+                                </div>
+                                <div className="flex flex-col gap-3">
+                                    <button className="w-full bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/40 text-blue-400 px-6 py-4 rounded-xl text-sm font-black uppercase transition-all flex items-center justify-center gap-3">
+                                        <Icon name="rotate-cw" size={20} />
+                                        <span>Restart Container</span>
+                                    </button>
+                                    <button className="w-full bg-red-600/20 hover:bg-red-600/30 border border-red-500/40 text-red-400 px-6 py-4 rounded-xl text-sm font-black uppercase transition-all flex items-center justify-center gap-3">
+                                        <Icon name="square" size={20} />
+                                        <span>Stop Container</span>
+                                    </button>
+                                    <button className="w-full bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-400 px-6 py-4 rounded-xl text-sm font-black uppercase transition-all flex items-center justify-center gap-3">
+                                        <Icon name="play" size={20} />
+                                        <span>Start Container</span>
+                                    </button>
+                                </div>
+                                <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
+                                    <p className="text-[10px] text-yellow-400 font-mono text-center">
+                                        ⚠️ Ces actions nécessitent une API backend pour contrôler Docker. Utilisez Portainer pour le moment.
+                                    </p>
                                 </div>
                             </div>
                         </div>
